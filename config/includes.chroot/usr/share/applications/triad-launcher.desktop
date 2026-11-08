@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=TriadOS App Launcher
+Comment=Inspect or open supported application packages
+Exec=triad-launch --pick
+Icon=application-x-executable
+Terminal=false
+Categories=Utility;System;
