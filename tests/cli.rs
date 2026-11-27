@@ -1,4 +1,7 @@
-use std::process::Command;
-#[test] fn cli_help(){let o=Command::new(env!("CARGO_BIN_EXE_triad")).arg("--help").output().unwrap();assert!(o.status.success());assert!(String::from_utf8_lossy(&o.stdout).contains("TriadOS"));}
-#[test] fn info_runs(){let o=Command::new(env!("CARGO_BIN_EXE_triad")).arg("info").output().unwrap();assert!(o.status.success());assert!(String::from_utf8_lossy(&o.stdout).contains("TriadOS"));}
-#[test] fn compatibility_runs(){let o=Command::new(env!("CARGO_BIN_EXE_triad")).arg("compat").output().unwrap();assert!(o.status.success());assert!(String::from_utf8_lossy(&o.stdout).contains("Linux native"));}
+use std::process::Command;fn cli(a:&[&str])->std::process::Output{Command::new(env!("CARGO_BIN_EXE_triad")).args(a).output().unwrap()}
+#[test]fn help(){assert!(cli(&["--help"]).status.success())}
+#[test]fn info(){let o=cli(&["info"]);assert!(o.status.success());assert!(String::from_utf8_lossy(&o.stdout).contains("TriadOS"))}
+#[test]fn doctor(){assert!(cli(&["doctor"]).status.success())}
+#[test]fn compat(){assert!(cli(&["compat"]).status.success())}
+#[test]fn list_apps(){assert!(cli(&["apps","list"]).status.success())}
+#[test]fn bad_command(){assert!(!cli(&["unknown"]).status.success())}

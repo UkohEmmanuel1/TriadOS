@@ -1,0 +1,1 @@
+pub fn triados_rust_runtime()->&'static str { "rust" }

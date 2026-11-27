@@ -1,7 +1,1 @@
-# Security
-- Do not launch Triad as root for applications.
-- Launches require interactive confirmation.
-- Unknown file types are inspection-only.
-- Wine is compatibility tooling, not a sandbox.
-- Verify provenance and checksums of downloaded software.
-- Package/update operations may require sudo and should be reviewed.
+# Security\nDo not run app launcher as root. Confirm app execution. Unknown files are inspection only. Wine is not a sandbox. Package transactions, app isolation and installer security remain unfinished.\n

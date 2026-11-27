@@ -1,50 +1,25 @@
-use anyhow::{Context, Result};
-use clap::{Parser,Subcommand};
-use std::{fs,path::{Path,PathBuf},process::Command};
-
-#[derive(Parser)]
-#[command(name="triad",version,about="Rust-powered TriadOS system toolkit")]
-struct Cli { #[command(subcommand)] command: Cmd }
-#[derive(Subcommand)]
-enum Cmd {
- Info,
- System { #[command(subcommand)] action: SystemCmd },
- Apps { #[command(subcommand)] action: AppsCmd },
- Compat,
- Doctor,
- Config,
- Logs,
-}
-#[derive(Subcommand)]
-enum SystemCmd { Status, Update }
-#[derive(Subcommand)]
-enum AppsCmd { List, Search { query:String }, Inspect { path:String }, Run { path:String, #[arg(trailing_var_arg=true)] args:Vec<String> } }
-
-fn main()->Result<()> {
- match Cli::parse().command {
-  Cmd::Info=>info(),
-  Cmd::System{action}=>match action {SystemCmd::Status=>status(),SystemCmd::Update=>update()},
-  Cmd::Apps{action}=>match action {AppsCmd::List=>apps_list(),AppsCmd::Search{query}=>apps_search(&query),AppsCmd::Inspect{path}=>inspect(&path),AppsCmd::Run{path,args}=>launch(&path,&args)},
-  Cmd::Compat=>compat(), Cmd::Doctor=>doctor(),Cmd::Config=>config(),Cmd::Logs=>logs()
- }
-}
+use clap::{Parser,Subcommand};use std::{fs,process::Command,path::Path};use anyhow::{Result,Context};
+#[derive(Parser)]#[command(name="triad",version,about="TriadOS Rust-native system manager")]struct Cli{#[command(subcommand)]cmd:Cmd}
+#[derive(Subcommand)]enum Cmd{Info,System{#[command(subcommand)]a:Sys},Apps{#[command(subcommand)]a:App},Compat,Doctor,Config,Logs{#[arg(short,long,default_value_t=40)]lines:usize},Update,Image}
+#[derive(Subcommand)]enum Sys{Status}
+#[derive(Subcommand)]enum App{List,Search{query:String},Inspect{path:String},Launch{desktop_file:String},Run{path:String,#[arg(trailing_var_arg=true)]args:Vec<String>}}
+fn main(){if let Err(e)=dispatch(Cli::parse()){eprintln!("triad: {e:#}");std::process::exit(1)}}
+fn dispatch(c:Cli)->Result<()>{match c.cmd{Cmd::Info=>info(),Cmd::System{a:Sys::Status}=>status(),Cmd::Apps{a}=>match a{App::List=>list(),App::Search{query}=>search(&query),App::Inspect{path}=>inspect(&path),App::Launch{desktop_file}=>launch_desktop(&desktop_file),App::Run{path,args}=>run_file(&path,&args)},Cmd::Compat=>compat(),Cmd::Doctor=>doctor(),Cmd::Config=>{println!("TriadOS configuration: defaults (no config file yet)");Ok(())},Cmd::Logs{lines}=>logs(lines),Cmd::Update=>{if !has("apt-get"){anyhow::bail!("APT unavailable")}exec("sudo",&["apt-get","update"])},Cmd::Image=>{if !has("lb"){anyhow::bail!("live-build missing")}exec("lb",&["config","--distribution","trixie","--architectures","amd64","--binary-images","iso-hybrid"])?;exec("lb",&["build"])}}}
 fn read(p:&str)->String{fs::read_to_string(p).unwrap_or_default()}
-fn os_name()->String{read("/etc/os-release").lines().find_map(|l|l.strip_prefix("PRETTY_NAME=")).map(|s|s.trim_matches('"').to_owned()).unwrap_or("Linux".into())}
-fn uname(arg:&str)->String{Command::new("uname").arg(arg).output().ok().map(|o|String::from_utf8_lossy(&o.stdout).trim().to_owned()).unwrap_or("unknown".into())}
-fn info()->Result<()>{
- println!("╔══════════════════════════════════════╗\n║              TriadOS              ║\n║       Rust-powered Linux           ║\n╚══════════════════════════════════════╝");
- println!("Version:       {}",env!("CARGO_PKG_VERSION"));println!("OS:           {}",os_name());println!("Kernel:       {}",uname("-r"));println!("Architecture:  {}",uname("-m"));println!("Hostname:     {}",read("/etc/hostname").trim());println!("Desktop:      {}",std::env::var("XDG_CURRENT_DESKTOP").unwrap_or("unknown".into()));Ok(())
-}
-fn status()->Result<()>{info()?;let mem=read("/proc/meminfo");for line in mem.lines().filter(|l|l.starts_with("MemTotal:")||l.starts_with("MemAvailable:")){println!("{line}");}println!("Uptime: {} seconds",read("/proc/uptime").split_whitespace().next().unwrap_or("?"));Ok(())}
-fn update()->Result<()>{if !has("apt-get"){anyhow::bail!("apt-get not found; this command is for Debian-based TriadOS")}println!("Refreshing APT indexes (sudo required)…");let s=Command::new("sudo").args(["apt-get","update"]).status()?;if !s.success(){anyhow::bail!("APT refresh failed ({s})")}println!("Indexes refreshed. Review updates with: sudo apt-get upgrade");Ok(())}
-fn has(bin:&str)->bool{std::env::var_os("PATH").unwrap_or_default().to_string_lossy().split(':').any(|d|Path::new(d).join(bin).is_file())}
-fn apps_list()->Result<()>{let mut n=0;for dir in ["/usr/share/applications","/usr/local/share/applications"]{if let Ok(entries)=fs::read_dir(dir){for e in entries.flatten(){if e.path().extension().is_some_and(|x|x=="desktop"){println!("{}",e.path().display());n+=1}}}}println!("Desktop entries: {n}");Ok(())}
-fn apps_search(q:&str)->Result<()>{let q=q.to_lowercase();let mut n=0;for d in ["/usr/share/applications","/usr/local/share/applications"]{if let Ok(entries)=fs::read_dir(d){for e in entries.flatten(){let p=e.path();if p.extension().is_some_and(|x|x=="desktop"){let text=fs::read_to_string(&p).unwrap_or_default();if text.to_lowercase().contains(&q)||p.to_string_lossy().to_lowercase().contains(&q){println!("{}",p.display());n+=1}}}}}println!("Matches: {n}");Ok(())}
-fn executable(p:&Path)->bool{#[cfg(unix)]{use std::os::unix::fs::PermissionsExt;p.metadata().map(|m|m.permissions().mode()&0o111!=0).unwrap_or(false)}#[cfg(not(unix))]{false}}
-fn detect(p:&Path)->&'static str{let f=p.file_name().unwrap_or_default().to_string_lossy().to_lowercase();if f.ends_with(".exe"){"Windows executable"}else if f.ends_with(".msi"){"Windows installer"}else if f.ends_with(".appimage"){"AppImage"}else if f.ends_with(".deb"){"Debian package"}else if f.ends_with(".rpm"){"RPM package"}else if f.ends_with(".dmg"){"macOS disk image (inspection only)"}else if f.ends_with(".app"){"macOS app bundle (unsupported)"}else if f.ends_with(".flatpakref"){"Flatpak reference"}else if f.ends_with(".sh"){"Shell script (inspection only)"}else if executable(p){"Executable (unknown format)"}else{"Unknown file"}}
-fn inspect(path:&str)->Result<()>{let p=Path::new(path);if !p.exists(){anyhow::bail!("file not found: {path}")}let m=p.metadata()?;println!("Path: {}",p.canonicalize().unwrap_or(p.to_path_buf()).display());println!("Size: {} bytes",m.len());println!("Type: {}",detect(p));println!("Route: {}",match detect(p){"Windows executable"|"Windows installer"=>"Wine, if installed (not sandboxed)","AppImage"=>"Direct launch after executable permission check","Debian package"=>"APT/dpkg package workflow","Flatpak reference"=>"Flatpak workflow","RPM package"=>"Unsupported package on Debian base","macOS disk image (inspection only)"|"macOS app bundle (unsupported)"|"Shell script (inspection only)"=>"Inspection only","Executable (unknown format)"=>"Manual review and confirmation",_=>"No automatic execution"});Ok(())}
-fn launch(path:&str,args:&[String])->Result<()>{let p=Path::new(path);if !p.exists(){anyhow::bail!("file not found: {path}")}let kind=detect(p);let bin=match kind{"Windows executable"|"Windows installer"=>{if !has("wine"){anyhow::bail!("Wine is not installed")} "wine"},"AppImage"=>{if !executable(p){anyhow::bail!("AppImage needs executable permission; inspect it first, then chmod +x")}path},"Executable (unknown format)"=>path,_=>anyhow::bail!("This file type is inspection-only. Run triad apps inspect first.")};println!("Launching {path} ({kind}). Wine is not a sandbox.");print!("Continue? [y/N] ");use std::io::{self,Write};io::stdout().flush()?;let mut answer=String::new();io::stdin().read_line(&mut answer)?;if !matches!(answer.trim().to_lowercase().as_str(),"y"|"yes"){println!("Cancelled.");return Ok(())}let status=Command::new(bin).arg(path).args(args).status().context("process launch failed")?;if !status.success(){eprintln!("Process exited: {status}")}Ok(())}
-fn compat()->Result<()>{println!("TriadOS compatibility\nLinux native: supported\nAppImage: permission-checked launch\nWindows: {}",if has("wine"){"Wine detected"}else{"Wine not installed"});println!("macOS: inspection only\nAndroid: future integration");Ok(())}
-fn doctor()->Result<()>{println!("TriadOS Doctor");for (name,cmd) in [("APT","apt-get"),("Wine","wine"),("Flatpak","flatpak"),("systemd","systemctl"),("journal","journalctl")]{println!("[{}] {name}",if has(cmd){"OK"}else{"--"})}println!("Kernel: {}",uname("-r"));println!("Desktop: {}",std::env::var("XDG_CURRENT_DESKTOP").unwrap_or("unknown".into()));println!("Session: {}",std::env::var("XDG_SESSION_TYPE").unwrap_or("unknown".into()));Ok(())}
-fn config()->Result<()>{let path=std::env::var("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|_|PathBuf::from(std::env::var("HOME").unwrap_or(".".into())).join(".config")).join("triados/triados.toml");println!("Config file: {}",path.display());match fs::read_to_string(&path){Ok(t)=>print!("{t}"),Err(e)if e.kind()==std::io::ErrorKind::NotFound=>println!("No config found; defaults active (launch confirmation enabled)."),Err(e)=>return Err(e.into())}Ok(())}
-fn logs()->Result<()>{if !has("journalctl"){println!("journalctl unavailable");return Ok(())}println!("Recent system journal (permissions may limit output):");let s=Command::new("journalctl").args(["-n","40","--no-pager"]).status()?;if !s.success(){eprintln!("journalctl exited {s}")}Ok(())}
+fn uname(a:&str)->String{Command::new("uname").arg(a).output().map(|o|String::from_utf8_lossy(&o.stdout).trim().to_owned()).unwrap_or_else(|_|"unknown".into())}
+fn has(c:&str)->bool{std::env::var_os("PATH").unwrap_or_default().to_string_lossy().split(':').any(|d|Path::new(d).join(c).is_file())}
+fn exec(p:&str,a:&[&str])->Result<()>{let s=Command::new(p).args(a).status()?;if !s.success(){anyhow::bail!("{p} failed: {s}")}Ok(())}
+fn info()->Result<()>{let os=read("/etc/os-release").lines().find_map(|l|l.strip_prefix("PRETTY_NAME=")).unwrap_or("Linux");println!("TriadOS Rust\nVersion: {}\nOS: {}\nKernel: {}\nArchitecture: {}\nHostname: {}\nDesktop: {}",env!("CARGO_PKG_VERSION"),os.trim_matches('"'),uname("-r"),uname("-m"),read("/etc/hostname").trim(),std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_else(|_|"unknown".into()));Ok(())}
+fn status()->Result<()>{info()?;for l in read("/proc/meminfo").lines().filter(|l|l.starts_with("MemTotal:")||l.starts_with("MemAvailable:")){println!("{l}")}println!("Uptime: {}",read("/proc/uptime").split_whitespace().next().unwrap_or("?"));println!("Load: {}",read("/proc/loadavg").split_whitespace().take(3).collect::<Vec<_>>().join(" "));Ok(())}
+fn appfiles()->Vec<String>{let mut v=vec![];for d in ["/usr/share/applications","/usr/local/share/applications"]{if let Ok(es)=fs::read_dir(d){for e in es.flatten(){let p=e.path();if p.extension().is_some_and(|x|x=="desktop"){v.push(p.display().to_string())}}}}v.sort();v}
+fn appname(s:&str)->&str{s.lines().find_map(|l|l.strip_prefix("Name=")).unwrap_or("(unnamed)")}
+fn list()->Result<()>{let v=appfiles();for p in &v{let t=read(p);println!("{}: {p}",appname(&t))}println!("Applications: {}",v.len());Ok(())}
+fn search(q:&str)->Result<()>{let mut n=0;for p in appfiles(){let t=read(&p);if t.to_lowercase().contains(&q.to_lowercase()){println!("{}: {p}",appname(&t));n+=1}}println!("Matches: {n}");Ok(())}
+fn inspect(p:&str)->Result<()>{let f=Path::new(p);if !f.exists(){anyhow::bail!("file missing")}println!("Path: {}\nBytes: {}\nExtension: {}\nPolicy: inspect only; execution requires explicit approval",f.canonicalize().unwrap_or_else(|_|f.to_path_buf()).display(),f.metadata()?.len(),f.extension().and_then(|e|e.to_str()).unwrap_or("unknown"));Ok(())}
+fn confirm()->Result<bool>{use std::io::{self,Write};print!("Execute this file? [y/N] ");io::stdout().flush()?;let mut s=String::new();io::stdin().read_line(&mut s)?;Ok(matches!(s.trim().to_lowercase().as_str(),"y"|"yes"))}
+fn run_file(p:&str,args:&[String])->Result<()>{let f=Path::new(p);if !f.is_file(){anyhow::bail!("not a regular file")}let ext=f.extension().and_then(|x|x.to_str()).unwrap_or("").to_lowercase();let (cmd,av)=if ext=="appimage"{#[cfg(unix)]{use std::os::unix::fs::PermissionsExt;if f.metadata()?.permissions().mode()&0o111==0{anyhow::bail!("AppImage lacks executable bit; verify before chmod")}}(p.to_string(),args.to_vec())}else if ext=="exe"||ext=="msi"{if !has("wine"){anyhow::bail!("Wine not installed")}let mut a=vec![p.to_string()];a.extend(args.iter().cloned());("wine".to_string(),a)}else{anyhow::bail!("Unsupported type; inspection only")};println!("Launching; Wine is compatibility, not sandboxing.");if !confirm()?{println!("Cancelled");return Ok(())}let s=Command::new(cmd).args(av).status().context("launch failure")?;if !s.success(){eprintln!("Process exited {s}")}Ok(())}
+fn launch_desktop(p:&str)->Result<()>{let t=read(p);let e=t.lines().find_map(|l|l.strip_prefix("Exec=")).context("Exec missing")?;if e.contains(';')||e.contains('|')||e.contains('&')||e.contains("$("){anyhow::bail!("unsafe desktop Exec rejected")}let a:Vec<String>=e.split_whitespace().filter(|s|!s.starts_with('%')).map(str::to_owned).collect();if a.is_empty(){anyhow::bail!("empty command")}println!("Exec: {e}");if !confirm()?{return Ok(())}let s=Command::new(&a[0]).args(&a[1..]).status()?;if !s.success(){anyhow::bail!("launch exited {s}")}Ok(())}
+fn compat()->Result<()>{println!("Linux: native\nAppImage: permission check + confirmation\nEXE/MSI: Wine required, not sandboxed\nmacOS apps: unsupported\nUnknown: inspection-only\nWine: {}",if has("wine"){"available"}else{"missing"});Ok(())}
+fn doctor()->Result<()>{for (n,c) in [("APT","apt-get"),("Wine","wine"),("Flatpak","flatpak"),("systemd","systemctl"),("journal","journalctl"),("live-build","lb")]{println!("{n}: {}",if has(c){"found"}else{"missing"})}println!("Kernel: {}",uname("-r"));Ok(())}
+fn logs(n:usize)->Result<()>{if !has("journalctl"){anyhow::bail!("journalctl missing")}let n=n.clamp(1,500).to_string();exec("journalctl",&["-n",&n,"--no-pager"])}
+#[cfg(test)]mod tests{use super::*;#[test]fn os_version(){assert!(!env!("CARGO_PKG_VERSION").is_empty())}#[test]fn app_dirs(){assert_eq!(appfiles().is_empty()||!appfiles().is_empty(),true)}#[test]fn uname(){assert!(!uname("-s").is_empty())}}

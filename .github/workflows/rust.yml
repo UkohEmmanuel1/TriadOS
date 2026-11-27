@@ -1,15 +1,15 @@
 name: Rust CI
 on:
   push:
-    branches: [main, rust-rewrite]
+    branches: [main]
   pull_request:
-    branches: [main, rust-rewrite]
+    branches: [main]
 jobs:
-  test:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo fmt --all
+      - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test

@@ -1,14 +1,1 @@
-# TriadOS Roadmap
-- [x] Rust CLI foundation and system information
-- [x] System status, package index refresh
-- [x] Application listing/search and file inspection
-- [x] Confirmation-gated launch for AppImage and Wine-supported targets
-- [x] Compatibility report and diagnostics
-- [x] Debian live-build integration skeleton
-- [ ] GTK4 launcher UI
-- [ ] Package installation manager with explicit consent
-- [ ] Wine prefix profiles and app isolation
-- [ ] Bubblewrap/namespaces/seccomp sandboxing
-- [ ] UEFI installer
-- [ ] QEMU boot and hardware test matrix
-- [ ] Signed release artifacts
+# TriadOS Roadmap\nRust CLI; system status; application discovery; inspection; confirmed launching; diagnostics; image build orchestration; next GTK shell, package UI, isolation, installer and VM boot testing.\n
