@@ -1,5 +1,6 @@
 mod apps;
 mod config;
+mod daemon;
 mod diagnostics;
 mod logs;
 mod packages;
@@ -11,10 +12,7 @@ use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "triad", version, about = "TriadOS system toolkit")]
-struct Cli {
-    #[command(subcommand)]
-    command: Command,
-}
+struct Cli { #[command(subcommand)] command: Command }
 #[derive(Subcommand)]
 enum Command {
     Info,
@@ -23,6 +21,7 @@ enum Command {
     Config,
     Services { #[command(subcommand)] command: ServiceCommand },
     Packages { #[command(subcommand)] command: PackageCommand },
+    Core { #[command(subcommand)] command: CoreCommand },
     Logs { #[arg(short, long, default_value_t = 50)] lines: usize },
     Doctor,
     Image,
@@ -35,14 +34,17 @@ enum AppsCommand { List, Search { query: String }, Inspect { path: String }, Lau
 enum ServiceCommand { List, Status { name: String } }
 #[derive(Subcommand)]
 enum PackageCommand { Update, Search { query: String }, Install { package: String }, Remove { package: String } }
+#[derive(Subcommand)]
+enum CoreCommand { Serve, Status }
 
-fn main() {
-    if let Err(error) = run(Cli::parse()) {
+#[tokio::main]
+async fn main() {
+    if let Err(error) = run(Cli::parse()).await {
         eprintln!("triad: {error:#}");
         std::process::exit(1);
     }
 }
-fn run(cli: Cli) -> Result<()> {
+async fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Info => system::info(),
         Command::System { command } => match command { SystemCommand::Status => system::status(), SystemCommand::Hardware => system::hardware() },
@@ -60,6 +62,7 @@ fn run(cli: Cli) -> Result<()> {
             PackageCommand::Install { package } => packages::install(&package),
             PackageCommand::Remove { package } => packages::remove(&package),
         },
+        Command::Core { command } => match command { CoreCommand::Serve => daemon::serve().await, CoreCommand::Status => daemon::status() },
         Command::Logs { lines } => logs::show(lines),
         Command::Doctor => diagnostics::doctor(),
         Command::Image => packages::build_image(),

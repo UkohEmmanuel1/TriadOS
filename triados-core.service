@@ -1,0 +1,30 @@
+[Unit]
+Description=TriadOS Core local system service
+After=local-fs.target
+ConditionPathExists=/usr/bin/triad
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/triad core serve
+Restart=on-failure
+RestartSec=2
+RuntimeDirectory=triados
+RuntimeDirectoryMode=0750
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictNamespaces=true
+SystemCallArchitectures=native
+ReadWritePaths=/run/triados
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target
