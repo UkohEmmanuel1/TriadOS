@@ -4,7 +4,7 @@ if [[ "$(id -u)" -ne 0 ]]; then echo "Run with sudo." >&2; exit 1; fi
 command -v lb >/dev/null || { echo "Install live-build first (apt install live-build)." >&2; exit 1; }
 command -v cargo >/dev/null || { echo "Install Rust stable/Cargo first." >&2; exit 1; }
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT
+cd "$ROOT"
 cargo build --release
 mkdir -p config/includes.chroot/usr/local/bin
 install -m 0755 target/release/triad config/includes.chroot/usr/local/bin/triad
