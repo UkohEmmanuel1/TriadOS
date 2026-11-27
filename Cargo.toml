@@ -7,3 +7,4 @@ license="MIT"
 [dependencies]
 anyhow="1"
 clap={version="4",features=["derive"]}
+\n[[bin]]\nname="triad"\npath="src/main.rs"\n
