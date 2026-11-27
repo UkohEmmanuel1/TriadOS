@@ -1,21 +1,17 @@
 # TriadOS
 
-**TriadOS is a Rust-first Linux distribution built on Debian Trixie and the upstream Linux kernel.**
+**TriadOS is a Rust-first Linux distribution in development, based on Debian Trixie and the upstream Linux kernel.**
 
-The repository contains a Rust system-management toolkit/Core prototype and an initial Debian live-build distribution profile. The live image configuration is new and has not yet been validated by a complete ISO build and QEMU boot test.
+The repository currently contains a Rust system-management toolkit/Core prototype and an initial Debian live-build profile. It is not yet a validated, complete desktop operating system: a successful ISO build, QEMU graphical-login test, installer workflow and installed-system test are still release gates.
 
-## Current components
-
+## Current foundation
 - Rust CLI for system status, hardware, network and storage diagnostics
 - Application discovery and confirmed desktop-entry launch
-- Read-only systemd service inspection
-- APT package operations with confirmation
-- TOML configuration, journal logs and diagnostics
-- Triad Core prototype using a local Unix-domain socket
-- Debian Trixie amd64 live-build configuration
-- Initial Sway/Waybar/LightDM desktop session
-- systemd unit for Triad Core
-- Calamares package included as an installer starting point
+- Read-only systemd service inspection and confirmed APT operations
+- TOML configuration, journal diagnostics and a local Unix-socket Core prototype
+- Debian Trixie amd64 live-build profile
+- Initial Sway/Waybar/LightDM graphical session configuration
+- Calamares package included as an installer starting point (not yet configured)
 
 ## Build the Rust toolkit
 
@@ -37,18 +33,21 @@ sudo apt-get install -y live-build debootstrap xorriso squashfs-tools
 sudo ./scripts/build-iso.sh
 ```
 
-Expected output: `live-image-amd64.hybrid.iso`.
+The expected output is `live-image-amd64.hybrid.iso`. A successful build and QEMU graphical-login validation have not yet been established. Never install an unvalidated image on a physical machine.
 
-## Desktop
+## Target Alpha 1 scope
 
-The first graphical milestone uses Sway (Wayland), Waybar, Wofi, Foot and Mako. This is a practical foundation while the custom Rust Triad Shell is developed. Log in through LightDM and choose the TriadOS session.
+The next milestone is to deliver:
+1. A successfully built ISO with repeatable CI artifacts and checksum.
+2. Verified BIOS/UEFI boot and graphical login in QEMU.
+3. A custom Rust Triad desktop shell, beyond the current temporary Sway session.
+4. Native graphical apps and a complete settings/hardware-management experience.
+5. A configured and tested installer, user creation and first-boot wizard.
+6. App sandboxing, least-privilege system integration, signed updates and recovery.
+7. A signed package repository and release infrastructure.
+
+See [docs/ROADMAP.md](docs/ROADMAP.md) for acceptance criteria and implementation status.
 
 ## Safety and release status
 
-The live-build profile is not yet a validated release. Build and boot it in QEMU before using it on hardware. Calamares is only included as a package; its installation workflow still needs configuration and testing. Package operations use APT. The Core daemon is a prototype, not a privileged command-execution API. Desktop-entry execution is not a sandbox.
-
-TriadOS does not replace the Linux kernel, Debian package solver, Wayland compositor, or browser engine.
-
-## Roadmap
-
-See [docs/ROADMAP.md](docs/ROADMAP.md) for implementation status.
+The current Core daemon is a prototype, not a privileged command-execution API. Desktop-entry execution is not a sandbox. Calamares is only included as a package; its installation workflow still needs configuration and testing. Sway is a temporary desktop foundation, not the custom Triad desktop. TriadOS uses the upstream Linux kernel and Debian package infrastructure rather than claiming to implement its own kernel or package solver.

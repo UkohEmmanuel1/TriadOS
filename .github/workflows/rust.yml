@@ -12,10 +12,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - run: cargo fmt --all
+      - run: cargo fmt --all -- --check
       - run: cargo check --all-targets
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test --all-targets
+
   live-build-config:
     runs-on: ubuntu-latest
     steps:
@@ -28,3 +29,29 @@ jobs:
           bash -n scripts/build-iso.sh
           grep -q 'trixie' auto/config
           grep -q 'sway' config/package-lists/triados.list.chroot
+
+  build-iso:
+    # This job builds a real image; it does not claim that the image boots
+    # successfully. QEMU BIOS/UEFI and graphical-login testing remain separate
+    # release gates until an automated guest test is implemented.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install live-build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y live-build debootstrap xorriso squashfs-tools \
+            grub-pc-bin grub-efi-amd64-bin mtools dosfstools
+      - name: Build TriadOS ISO
+        run: sudo ./scripts/build-iso.sh
+      - name: Upload ISO and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: triados-live-amd64
+          path: |
+            live-image-amd64.hybrid.iso
+            live-image-amd64.hybrid.iso.sha256
+          if-no-files-found: error
+          retention-days: 14
