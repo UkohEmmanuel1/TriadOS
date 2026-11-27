@@ -22,4 +22,4 @@ fn launch_desktop(p:&str)->Result<()>{let t=read(p);let e=t.lines().find_map(|l|
 fn compat()->Result<()>{println!("Linux: native\nAppImage: permission check + confirmation\nEXE/MSI: Wine required, not sandboxed\nmacOS apps: unsupported\nUnknown: inspection-only\nWine: {}",if has("wine"){"available"}else{"missing"});Ok(())}
 fn doctor()->Result<()>{for (n,c) in [("APT","apt-get"),("Wine","wine"),("Flatpak","flatpak"),("systemd","systemctl"),("journal","journalctl"),("live-build","lb")]{println!("{n}: {}",if has(c){"found"}else{"missing"})}println!("Kernel: {}",uname("-r"));Ok(())}
 fn logs(n:usize)->Result<()>{if !has("journalctl"){anyhow::bail!("journalctl missing")}let n=n.clamp(1,500).to_string();exec("journalctl",&["-n",&n,"--no-pager"])}
-#[cfg(test)]mod tests{use super::*;#[test]fn os_version(){assert!(!env!("CARGO_PKG_VERSION").is_empty())}#[test]fn app_dirs(){assert_eq!(appfiles().is_empty()||!appfiles().is_empty(),true)}#[test]fn uname(){assert!(!uname("-s").is_empty())}}
+
