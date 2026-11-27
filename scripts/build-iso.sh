@@ -9,16 +9,21 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exit 1
 fi
 
-for tool in cargo lb; do
-  command -v "$tool" >/dev/null 2>&1 || {
-    echo "Missing required tool: $tool" >&2
-    exit 1
-  }
-done
+command -v lb >/dev/null 2>&1 || {
+  echo "Missing required tool: lb" >&2
+  exit 1
+}
 
-echo "[1/4] Building TriadOS Rust system manager"
-cargo build --release
-install -D -m 0755 target/release/triad config/includes.chroot/usr/bin/triad
+echo "[1/4] Checking TriadOS Rust system manager"
+BINARY="$ROOT/target/release/triad"
+if [[ ! -x "$BINARY" ]]; then
+  if ! command -v cargo >/dev/null 2>&1; then
+    echo "Missing target/release/triad and cargo; build the Rust binary before running as root." >&2
+    exit 1
+  fi
+  cargo build --release
+fi
+install -D -m 0755 "$BINARY" config/includes.chroot/usr/bin/triad
 
 echo "[2/4] Configuring Debian Trixie live-build"
 lb config
