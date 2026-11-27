@@ -38,5 +38,6 @@ if [[ ! -s "$ISO" ]]; then
 fi
 
 echo "[4/4] ISO created"
-sha256sum "$ISO"
+sha256sum "$ISO" | tee "$ISO.sha256"
+echo "Checksum: $ISO.sha256"
 echo "Output: $ISO"
