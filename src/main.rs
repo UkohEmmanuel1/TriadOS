@@ -1,25 +1,67 @@
-use clap::{Parser,Subcommand};use std::{fs,process::Command,path::Path};use anyhow::{Result,Context};
-#[derive(Parser)]#[command(name="triad",version,about="TriadOS Rust-native system manager")]struct Cli{#[command(subcommand)]cmd:Cmd}
-#[derive(Subcommand)]enum Cmd{Info,System{#[command(subcommand)]a:Sys},Apps{#[command(subcommand)]a:App},Compat,Doctor,Config,Logs{#[arg(short,long,default_value_t=40)]lines:usize},Update,Image}
-#[derive(Subcommand)]enum Sys{Status}
-#[derive(Subcommand)]enum App{List,Search{query:String},Inspect{path:String},Launch{desktop_file:String},Run{path:String,#[arg(trailing_var_arg=true)]args:Vec<String>}}
-fn main(){if let Err(e)=dispatch(Cli::parse()){eprintln!("triad: {e:#}");std::process::exit(1)}}
-fn dispatch(c:Cli)->Result<()>{match c.cmd{Cmd::Info=>info(),Cmd::System{a:Sys::Status}=>status(),Cmd::Apps{a}=>match a{App::List=>list(),App::Search{query}=>search(&query),App::Inspect{path}=>inspect(&path),App::Launch{desktop_file}=>launch_desktop(&desktop_file),App::Run{path,args}=>run_file(&path,&args)},Cmd::Compat=>compat(),Cmd::Doctor=>doctor(),Cmd::Config=>{println!("TriadOS configuration: defaults (no config file yet)");Ok(())},Cmd::Logs{lines}=>logs(lines),Cmd::Update=>{if !has("apt-get"){anyhow::bail!("APT unavailable")}exec("sudo",&["apt-get","update"])},Cmd::Image=>{if !has("lb"){anyhow::bail!("live-build missing")}exec("lb",&["config","--distribution","trixie","--architectures","amd64","--binary-images","iso-hybrid"])?;exec("lb",&["build"])}}}
-fn read(p:&str)->String{fs::read_to_string(p).unwrap_or_default()}
-fn uname(a:&str)->String{Command::new("uname").arg(a).output().map(|o|String::from_utf8_lossy(&o.stdout).trim().to_owned()).unwrap_or_else(|_|"unknown".into())}
-fn has(c:&str)->bool{std::env::var_os("PATH").unwrap_or_default().to_string_lossy().split(':').any(|d|Path::new(d).join(c).is_file())}
-fn exec(p:&str,a:&[&str])->Result<()>{let s=Command::new(p).args(a).status()?;if !s.success(){anyhow::bail!("{p} failed: {s}")}Ok(())}
-fn info()->Result<()>{let os_release=read("/etc/os-release");let os=os_release.lines().find_map(|l|l.strip_prefix("PRETTY_NAME=")).unwrap_or("Linux");println!("TriadOS Rust\nVersion: {}\nOS: {}\nKernel: {}\nArchitecture: {}\nHostname: {}\nDesktop: {}",env!("CARGO_PKG_VERSION"),os.trim_matches('"'),uname("-r"),uname("-m"),read("/etc/hostname").trim(),std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_else(|_|"unknown".into()));Ok(())}
-fn status()->Result<()>{info()?;for l in read("/proc/meminfo").lines().filter(|l|l.starts_with("MemTotal:")||l.starts_with("MemAvailable:")){println!("{l}")}println!("Uptime: {}",read("/proc/uptime").split_whitespace().next().unwrap_or("?"));println!("Load: {}",read("/proc/loadavg").split_whitespace().take(3).collect::<Vec<_>>().join(" "));Ok(())}
-fn appfiles()->Vec<String>{let mut v=vec![];for d in ["/usr/share/applications","/usr/local/share/applications"]{if let Ok(es)=fs::read_dir(d){for e in es.flatten(){let p=e.path();if p.extension().is_some_and(|x|x=="desktop"){v.push(p.display().to_string())}}}}v.sort();v}
-fn appname(s:&str)->&str{s.lines().find_map(|l|l.strip_prefix("Name=")).unwrap_or("(unnamed)")}
-fn list()->Result<()>{let v=appfiles();for p in &v{let t=read(p);println!("{}: {p}",appname(&t))}println!("Applications: {}",v.len());Ok(())}
-fn search(q:&str)->Result<()>{let mut n=0;for p in appfiles(){let t=read(&p);if t.to_lowercase().contains(&q.to_lowercase()){println!("{}: {p}",appname(&t));n+=1}}println!("Matches: {n}");Ok(())}
-fn inspect(p:&str)->Result<()>{let f=Path::new(p);if !f.exists(){anyhow::bail!("file missing")}println!("Path: {}\nBytes: {}\nExtension: {}\nPolicy: inspect only; execution requires explicit approval",f.canonicalize().unwrap_or_else(|_|f.to_path_buf()).display(),f.metadata()?.len(),f.extension().and_then(|e|e.to_str()).unwrap_or("unknown"));Ok(())}
-fn confirm()->Result<bool>{use std::io::{self,Write};print!("Execute this file? [y/N] ");io::stdout().flush()?;let mut s=String::new();io::stdin().read_line(&mut s)?;Ok(matches!(s.trim().to_lowercase().as_str(),"y"|"yes"))}
-fn run_file(p:&str,args:&[String])->Result<()>{let f=Path::new(p);if !f.is_file(){anyhow::bail!("not a regular file")}let ext=f.extension().and_then(|x|x.to_str()).unwrap_or("").to_lowercase();let (cmd,av)=if ext=="appimage"{#[cfg(unix)]{use std::os::unix::fs::PermissionsExt;if f.metadata()?.permissions().mode()&0o111==0{anyhow::bail!("AppImage lacks executable bit; verify before chmod")}}(p.to_string(),args.to_vec())}else if ext=="exe"||ext=="msi"{if !has("wine"){anyhow::bail!("Wine not installed")}let mut a=vec![p.to_string()];a.extend(args.iter().cloned());("wine".to_string(),a)}else{anyhow::bail!("Unsupported type; inspection only")};println!("Launching; Wine is compatibility, not sandboxing.");if !confirm()?{println!("Cancelled");return Ok(())}let s=Command::new(cmd).args(av).status().context("launch failure")?;if !s.success(){eprintln!("Process exited {s}")}Ok(())}
-fn launch_desktop(p:&str)->Result<()>{let t=read(p);let e=t.lines().find_map(|l|l.strip_prefix("Exec=")).context("Exec missing")?;if e.contains(';')||e.contains('|')||e.contains('&')||e.contains("$("){anyhow::bail!("unsafe desktop Exec rejected")}let a:Vec<String>=e.split_whitespace().filter(|s|!s.starts_with('%')).map(str::to_owned).collect();if a.is_empty(){anyhow::bail!("empty command")}println!("Exec: {e}");if !confirm()?{return Ok(())}let s=Command::new(&a[0]).args(&a[1..]).status()?;if !s.success(){anyhow::bail!("launch exited {s}")}Ok(())}
-fn compat()->Result<()>{println!("Linux: native\nAppImage: permission check + confirmation\nEXE/MSI: Wine required, not sandboxed\nmacOS apps: unsupported\nUnknown: inspection-only\nWine: {}",if has("wine"){"available"}else{"missing"});Ok(())}
-fn doctor()->Result<()>{for (n,c) in [("APT","apt-get"),("Wine","wine"),("Flatpak","flatpak"),("systemd","systemctl"),("journal","journalctl"),("live-build","lb")]{println!("{n}: {}",if has(c){"found"}else{"missing"})}println!("Kernel: {}",uname("-r"));Ok(())}
-fn logs(n:usize)->Result<()>{if !has("journalctl"){anyhow::bail!("journalctl missing")}let n=n.clamp(1,500).to_string();exec("journalctl",&["-n",&n,"--no-pager"])}
+mod apps;
+mod config;
+mod diagnostics;
+mod logs;
+mod packages;
+mod services;
+mod system;
 
+use anyhow::Result;
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(name = "triad", version, about = "TriadOS system toolkit")]
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
+#[derive(Subcommand)]
+enum Command {
+    Info,
+    System { #[command(subcommand)] command: SystemCommand },
+    Apps { #[command(subcommand)] command: AppsCommand },
+    Config,
+    Services { #[command(subcommand)] command: ServiceCommand },
+    Packages { #[command(subcommand)] command: PackageCommand },
+    Logs { #[arg(short, long, default_value_t = 50)] lines: usize },
+    Doctor,
+    Image,
+}
+#[derive(Subcommand)]
+enum SystemCommand { Status, Hardware }
+#[derive(Subcommand)]
+enum AppsCommand { List, Search { query: String }, Inspect { path: String }, Launch { desktop_file: String } }
+#[derive(Subcommand)]
+enum ServiceCommand { List, Status { name: String } }
+#[derive(Subcommand)]
+enum PackageCommand { Update, Search { query: String }, Install { package: String }, Remove { package: String } }
+
+fn main() {
+    if let Err(error) = run(Cli::parse()) {
+        eprintln!("triad: {error:#}");
+        std::process::exit(1);
+    }
+}
+fn run(cli: Cli) -> Result<()> {
+    match cli.command {
+        Command::Info => system::info(),
+        Command::System { command } => match command { SystemCommand::Status => system::status(), SystemCommand::Hardware => system::hardware() },
+        Command::Apps { command } => match command {
+            AppsCommand::List => apps::list(),
+            AppsCommand::Search { query } => apps::search(&query),
+            AppsCommand::Inspect { path } => apps::inspect(&path),
+            AppsCommand::Launch { desktop_file } => apps::launch_desktop(&desktop_file),
+        },
+        Command::Config => config::show(),
+        Command::Services { command } => match command { ServiceCommand::List => services::list(), ServiceCommand::Status { name } => services::status(&name) },
+        Command::Packages { command } => match command {
+            PackageCommand::Update => packages::update(),
+            PackageCommand::Search { query } => packages::search(&query),
+            PackageCommand::Install { package } => packages::install(&package),
+            PackageCommand::Remove { package } => packages::remove(&package),
+        },
+        Command::Logs { lines } => logs::show(lines),
+        Command::Doctor => diagnostics::doctor(),
+        Command::Image => packages::build_image(),
+    }
+}
