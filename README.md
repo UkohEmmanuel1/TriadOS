@@ -18,7 +18,7 @@ Install Rust stable, then:
 ```sh
 cargo build --release
 cargo test
-./scripts/check.sh
+bash ./scripts/check.sh
 ```
 
 ## Commands
@@ -39,6 +39,6 @@ triad logs
 macOS app bundles and DMGs are inspection-only. Unknown file types are not auto-run.
 
 ## ISO experiment
-On Debian 13: install `live-build debootstrap squashfs-tools xorriso`, then run `sudo ./scripts/build-iso.sh`. The output must be tested in QEMU before release. TriadOS uses the Linux kernel and Debian build tools; it does not implement a new kernel.
+On Debian 13: install `live-build debootstrap squashfs-tools xorriso`, then run `sudo bash ./scripts/build-iso.sh`. The output must be tested in QEMU before release. TriadOS uses the Linux kernel and Debian build tools; it does not implement a new kernel.
 
 MIT license.
