@@ -17,7 +17,7 @@ for tool in cargo lb; do
 done
 
 echo "[1/4] Building TriadOS Rust system manager"
-cargo build --release --locked
+cargo build --release
 install -D -m 0755 target/release/triad config/includes.chroot/usr/bin/triad
 
 echo "[2/4] Configuring Debian Trixie live-build"
