@@ -1,55 +1,36 @@
 # TriadOS live image build
 
-This repository now contains an initial Debian Trixie live-build profile for amd64.
-It uses the upstream Debian kernel and boot stack, Sway/Waybar for the initial
-Wayland desktop, LightDM for graphical login, NetworkManager for networking,
-Calamares as the installer frontend, and the Rust `triad` binary as the system
-management entry point.
+The Rust `triad image` command owns the Debian Trixie live-build configuration,
+binary staging, build orchestration and checksum generation. Debian live-build
+still performs the distro-specific chroot and boot-image assembly.
 
 ## Build host
 
-Use a Debian Trixie amd64 build host (or a compatible Debian environment) with
-Rust stable, Cargo, live-build, debootstrap, xorriso, and sufficient disk space.
-The build must run as root because live-build mounts and configures a chroot.
-
-Install the build tools:
+Use Debian Trixie amd64 with Rust stable, Cargo, live-build, debootstrap,
+xorriso, squashfs-tools, GRUB utilities, mtools and dosfstools. Root is required
+for chroot construction.
 
 ```sh
 sudo apt-get update
-sudo apt-get install -y live-build debootstrap xorriso squashfs-tools   grub-pc-bin grub-efi-amd64-bin mtools
+sudo apt-get install -y live-build debootstrap xorriso squashfs-tools grub-pc-bin grub-efi-amd64-bin mtools dosfstools
+cargo build --release
+sudo target/release/triad image
 ```
 
-Build:
+Outputs: `live-image-amd64.hybrid.iso` and
+`live-image-amd64.hybrid.iso.sha256`.
+
+## QEMU test
 
 ```sh
-sudo ./scripts/build-iso.sh
+qemu-system-x86_64 -m 4096 -smp 2 -cdrom live-image-amd64.hybrid.iso -boot d
 ```
 
-Expected output: `live-image-amd64.hybrid.iso`.
+## Limitations
 
-## Test in QEMU
-
-```sh
-qemu-system-x86_64 -m 4096 -smp 2 -enable-kvm   -cdrom live-image-amd64.hybrid.iso -boot d
-```
-
-On hosts without KVM, remove `-enable-kvm`.
-
-## Current scope and limitations
-
-- This is a first live-build profile, not a validated release ISO.
-- The desktop is Sway with Waybar, Wofi, Foot and Mako; it is not yet a custom
-  Triad Rust shell.
-- Calamares is included as a frontend package; a complete TriadOS installer
-  configuration, partitioning policy, branding, encryption flow and install
-  hooks still need to be authored and tested.
-- The live session, login manager, firmware availability, package names and
-  bootloader behavior must be verified by running a full image build and QEMU.
-- No kernel fork is maintained. TriadOS uses the Debian Linux kernel.
-- Do not install this image on a production machine until installation and
-  recovery have been tested on disposable virtual disks.
-
-## Build outputs
-
-The ISO and checksum are local build artifacts and should be attached to a
-versioned GitHub release after validation, not committed to the source tree.
+This is not yet a validated release ISO. Sway is a temporary desktop, not the
+custom Triad Rust shell. Calamares is only included as a package and still
+needs a complete installer configuration. Boot, graphical login, hardware,
+installation, encryption, updates and recovery require testing. TriadOS uses
+the Debian Linux kernel and Debian package infrastructure. Never install an
+unvalidated image on a production machine.

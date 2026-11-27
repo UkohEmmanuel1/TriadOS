@@ -1,0 +1,7 @@
+*.rs linguist-language=Rust
+*.toml linguist-detectable=false
+*.list linguist-detectable=false
+*.conf linguist-detectable=false
+*.service linguist-detectable=false
+*.desktop linguist-detectable=false
+*.md linguist-documentation
