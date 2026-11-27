@@ -1,54 +1,44 @@
-# TriadOS — Linux desktop with cross-platform compatibility helpers
+# TriadOS Rust Edition
+Rust-first system toolkit and compatibility launcher for a Debian-based Linux desktop.
 
-**Status: prototype source project. Not a finished operating system or a tested ISO.**
+**Status:** Early rewrite. CLI features are implemented in source; ISO generation is an experimental path and not boot-tested.
 
-TriadOS uses Debian live-build and KDE Plasma to create a Linux desktop live ISO. It includes a cross-platform format launcher.
-
-## Compatibility
-- Linux: native executable files and packages.
-- Windows .exe/.msi: uses Wine, which cannot run every Windows program.
-- macOS .app/.dmg: detection only. Darling is experimental and graphical macOS applications are **not supported** in this prototype. Final Cut Pro and Logic Pro are unsupported.
+## Features
+- System information and status
+- APT index refresh helper
+- Application list/search from desktop-entry folders
+- File inspection and compatibility detection
+- Confirmation-gated execution for AppImage and native executable files
+- Wine routing for EXE/MSI (Wine is not a sandbox)
+- Diagnostics, config and journal commands
+- Debian live-build integration scaffold
 
 ## Build
-On Debian 13 (trixie), with suitable disk space and root access:
-
+Install Rust stable, then:
 ```sh
-sudo apt update
-sudo apt install live-build debootstrap squashfs-tools xorriso python3
-sudo ./scripts/build-iso.sh
+cargo build --release
+cargo test
+./scripts/check.sh
 ```
 
-If successful, test `live-image-amd64.hybrid.iso` with QEMU:
-
+## Commands
 ```sh
-qemu-system-x86_64 -m 4096 -smp 4 -enable-kvm -cdrom live-image-amd64.hybrid.iso -boot d
+triad info
+triad system status
+triad system update
+triad apps list
+triad apps search firefox
+triad apps inspect ./installer.exe
+triad apps run ./setup.exe
+triad compat
+triad doctor
+triad config
+triad logs
 ```
 
-This is a live image, not a complete disk installer; no ISO has been built or verified yet.
+macOS app bundles and DMGs are inspection-only. Unknown file types are not auto-run.
 
-## Launcher
+## ISO experiment
+On Debian 13: install `live-build debootstrap squashfs-tools xorriso`, then run `sudo ./scripts/build-iso.sh`. The output must be tested in QEMU before release. TriadOS uses the Linux kernel and Debian build tools; it does not implement a new kernel.
 
-```sh
-python3 launcher/triad_launcher.py --help
-python3 launcher/triad_launcher.py --inspect ~/Downloads/MyApp.app
-python3 launcher/triad_launcher.py ~/Downloads/setup.exe
-sudo ./scripts/install-launcher.sh
-```
-
-The launcher prompts before launching. Wine is not a security sandbox. Do not launch unknown executables.
-
-## Checks
-
-```sh
-python3 -m unittest discover -s tests -v
-bash -n scripts/*.sh
-```
-
-## Roadmap
-1. Build and boot-test the live ISO.
-2. Add installer and UEFI integration.
-3. Improve Wine application isolation and guidance.
-4. Research Darling's current supported command-line subset.
-5. Add package updates, signed releases and accessibility.
-
-Project code MIT-licensed; third-party components retain their own licenses.
+MIT license.
