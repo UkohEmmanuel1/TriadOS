@@ -1,0 +1,2 @@
+# Debian Trixie security updates for the image build environment.
+deb https://security.debian.org/debian-security trixie-security main contrib non-free non-free-firmware

@@ -9,6 +9,7 @@ lb config noauto \
   --debian-installer live \
   --apt-recommends true \
   --apt-indices true \
+  --security false \
   --memtest none \
   --iso-application "TriadOS" \
   --iso-publisher "TriadOS Project" \

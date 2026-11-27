@@ -28,10 +28,14 @@ jobs:
         run: |
           test -f auto/config
           test -f config/package-lists/triados.list.chroot
+          test -f config/archives/triados-security.list.chroot
+          test -f config/archives/triados-security.list.binary
           test -x scripts/build-iso.sh
           bash -n scripts/build-iso.sh
           grep -q 'trixie' auto/config
           grep -q 'sway' config/package-lists/triados.list.chroot
+          grep -q 'trixie-security' config/archives/triados-security.list.chroot
+          grep -q -- '--security false' auto/config
 
   build-iso:
     # This job builds a real image; it does not claim that the image boots
