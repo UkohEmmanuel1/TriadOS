@@ -1,38 +1,9 @@
 use anyhow::Result;
 use std::{fs, process::Command};
-
-fn read(path: &str) -> String { fs::read_to_string(path).unwrap_or_default() }
-fn uname(flag: &str) -> String {
-    Command::new("uname").arg(flag).output().map(|o| String::from_utf8_lossy(&o.stdout).trim().into()).unwrap_or_else(|_| "unknown".into())
-}
-pub fn info() -> Result<()> {
-    let release = read("/etc/os-release");
-    let name = release.lines().find_map(|l| l.strip_prefix("PRETTY_NAME=")).unwrap_or("Linux").trim_matches('"');
-    println!("TriadOS Rust system toolkit\nHost OS: {name}\nKernel: {}\nArchitecture: {}\nHostname: {}\nDesktop: {}", uname("-r"), uname("-m"), read("/etc/hostname").trim(), std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_else(|_| "unknown".into()));
-    Ok(())
-}
-pub fn status() -> Result<()> {
-    info()?;
-    for line in read("/proc/meminfo").lines().filter(|l| l.starts_with("MemTotal:") || l.starts_with("MemAvailable:")) { println!("{line}"); }
-    println!("Uptime (seconds): {}", read("/proc/uptime").split_whitespace().next().unwrap_or("?"));
-    println!("Load average: {}", read("/proc/loadavg").split_whitespace().take(3).collect::<Vec<_>>().join(" "));
-    Ok(())
-}
-pub fn hardware() -> Result<()> {
-    println!("CPU:");
-    let cpu = read("/proc/cpuinfo");
-    if let Some(model) = cpu.lines().find(|l| l.starts_with("model name")) { println!("{model}"); }
-    println!("Memory:");
-    for line in read("/proc/meminfo").lines().filter(|l| l.starts_with("MemTotal:")) { println!("{line}"); }
-    println!("PCI devices (if lspci is installed):");
-    match Command::new("lspci").output() {
-        Ok(output) if output.status.success() => print!("{}", String::from_utf8_lossy(&output.stdout)),
-        _ => println!("lspci not found"),
-    }
-    println!("USB devices (if lsusb is installed):");
-    match Command::new("lsusb").output() {
-        Ok(output) if output.status.success() => print!("{}", String::from_utf8_lossy(&output.stdout)),
-        _ => println!("lsusb not found"),
-    }
-    Ok(())
-}
+fn read(path:&str)->String{fs::read_to_string(path).unwrap_or_default()}
+fn uname(flag:&str)->String{Command::new("uname").arg(flag).output().map(|o|String::from_utf8_lossy(&o.stdout).trim().into()).unwrap_or_else(|_|"unknown".into())}
+pub fn info()->Result<()> {let rel=read("/etc/os-release");let name=rel.lines().find_map(|l|l.strip_prefix("PRETTY_NAME=")).unwrap_or("Linux").trim_matches('"');println!("TriadOS Rust toolkit\nHost OS: {name}\nKernel: {}\nArchitecture: {}\nHostname: {}\nDesktop: {}",uname("-r"),uname("-m"),read("/etc/hostname").trim(),std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_else(|_|"unknown".into()));Ok(())}
+pub fn status()->Result<()> {info()?;for l in read("/proc/meminfo").lines().filter(|l|l.starts_with("MemTotal:")||l.starts_with("MemAvailable:")){println!("{l}");}println!("Uptime (seconds): {}",read("/proc/uptime").split_whitespace().next().unwrap_or("?"));println!("Load average: {}",read("/proc/loadavg").split_whitespace().take(3).collect::<Vec<_>>().join(" "));Ok(())}
+pub fn hardware()->Result<()> {println!("CPU:");if let Some(l)=read("/proc/cpuinfo").lines().find(|l|l.starts_with("model name")){println!("{l}");}println!("Memory:");for l in read("/proc/meminfo").lines().filter(|l|l.starts_with("MemTotal:")){println!("{l}");}for(c,label)in[("lspci","PCI"),("lsusb","USB")]{println!("{label} devices:");match Command::new(c).output(){Ok(o)if o.status.success()=>print!("{}",String::from_utf8_lossy(&o.stdout)),_=>println!("{c} not installed")}}Ok(())}
+pub fn network()->Result<()> {println!("Network interfaces:");for entry in fs::read_dir("/sys/class/net")?{let e=entry?;let name=e.file_name().to_string_lossy().to_string();let state=read(&format!("/sys/class/net/{name}/operstate")).trim().to_string();let mac=read(&format!("/sys/class/net/{name}/address")).trim().to_string();println!("{name}: state={state}, mac={mac}");}if let Ok(o)=Command::new("ip").args(["-brief","address"]).output(){print!("{}",String::from_utf8_lossy(&o.stdout));}else{println!("ip utility unavailable; showing sysfs only");}Ok(())}
+pub fn storage()->Result<()> {println!("Block devices:");if let Ok(o)=Command::new("lsblk").args(["-o","NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS"]).output(){if o.status.success(){print!("{}",String::from_utf8_lossy(&o.stdout));}else{println!("lsblk failed");}}else{println!("lsblk unavailable");}println!("Filesystem usage:");if let Ok(o)=Command::new("df").args(["-h","-x","tmpfs","-x","devtmpfs"]).output(){print!("{}",String::from_utf8_lossy(&o.stdout));}Ok(())}
