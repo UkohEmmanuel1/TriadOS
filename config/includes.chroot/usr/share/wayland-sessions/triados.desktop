@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=TriadOS
+Comment=TriadOS Sway desktop session
+Exec=sway
+Type=Application
+DesktopNames=TriadOS;wlroots

@@ -1,3 +1,10 @@
 /target
-*.iso
-*.log
+/live-image-*.iso
+/live-image-*.contents
+/live-image-*.packages
+/live-image-*.manifest
+/live-image-*.filesystem
+/live-image-*.hybrid.iso
+/chroot
+/binary
+/.build

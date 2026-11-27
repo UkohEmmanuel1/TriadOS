@@ -1,0 +1,6 @@
+system_name = "TriadOS"
+release_codename = "Mountain Lake"
+base_distribution = "Debian Trixie"
+confirm_launch = true
+telemetry = false
+desktop = "Sway"

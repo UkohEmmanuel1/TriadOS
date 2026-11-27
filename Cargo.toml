@@ -1,6 +1,6 @@
 [package]
 name = "triados"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 description = "TriadOS Rust system manager and service foundation"
 license = "MIT"
@@ -9,8 +9,9 @@ license = "MIT"
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 toml = "0.8"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "signal", "sync"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util", "signal", "sync", "time"] }
 
 [[bin]]
 name = "triad"

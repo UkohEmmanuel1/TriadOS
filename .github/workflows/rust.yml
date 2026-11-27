@@ -1,15 +1,30 @@
-name: TriadOS Rust CI (validation)
+name: TriadOS validation
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 jobs:
-  checks:
+  rust:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
       - run: cargo fmt --all
-      - run: cargo check\n      - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
+      - run: cargo check --all-targets
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test --all-targets
+  live-build-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate distribution configuration
+        run: |
+          test -f auto/config
+          test -f config/package-lists/triados.list.chroot
+          test -x scripts/build-iso.sh
+          bash -n scripts/build-iso.sh
+          grep -q 'trixie' auto/config
+          grep -q 'sway' config/package-lists/triados.list.chroot

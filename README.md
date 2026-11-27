@@ -1,47 +1,54 @@
 # TriadOS
 
-**TriadOS is a Rust-first Linux distribution project.** The current repository is a user-space Rust toolkit and architectural foundation—not yet a custom bootable OS or desktop environment.
+**TriadOS is a Rust-first Linux distribution built on Debian Trixie and the upstream Linux kernel.**
 
-## Current foundation
-- Rust CLI with system status and basic hardware inventory
-- Application discovery from desktop-entry directories, search and inspect
-- Launching desktop entries with confirmation
-- systemd service listing/status (read-only)
-- APT search/update/install/remove wrappers with confirmation
-- TOML configuration reader
-- Journal log viewing and basic host diagnostics
+The repository contains a Rust system-management toolkit/Core prototype and an initial Debian live-build distribution profile. The live image configuration is new and has not yet been validated by a complete ISO build and QEMU boot test.
 
-## Requirements
-- Rust stable
-- Linux host for the system integration commands
-- Debian/Ubuntu-like host for APT operations
-- systemd for service inspection
+## Current components
 
-## CLI
+- Rust CLI for system status, hardware, network and storage diagnostics
+- Application discovery and confirmed desktop-entry launch
+- Read-only systemd service inspection
+- APT package operations with confirmation
+- TOML configuration, journal logs and diagnostics
+- Triad Core prototype using a local Unix-domain socket
+- Debian Trixie amd64 live-build configuration
+- Initial Sway/Waybar/LightDM desktop session
+- systemd unit for Triad Core
+- Calamares package included as an installer starting point
+
+## Build the Rust toolkit
+
+Requirements: Rust stable and Cargo.
+
 ```sh
-triad info
-triad system status
-triad system hardware
-triad apps list
-triad apps search firefox
-triad apps inspect /path/to/file
-triad apps launch /usr/share/applications/example.desktop
-triad services list
-triad services status NetworkManager.service
-triad packages search editor
-triad packages update
-triad packages install package-name
-triad packages remove package-name
-triad logs --lines 100
-triad doctor
-triad image
+cargo build --release
+cargo test --all-targets
+cargo run -- info
+cargo run -- doctor
 ```
 
+## Build a live ISO
+
+Use a Debian Trixie amd64 build host. See [docs/DISTRIBUTION_BUILD.md](docs/DISTRIBUTION_BUILD.md).
+
+```sh
+sudo apt-get install -y live-build debootstrap xorriso squashfs-tools
+sudo ./scripts/build-iso.sh
+```
+
+Expected output: `live-image-amd64.hybrid.iso`.
+
+## Desktop
+
+The first graphical milestone uses Sway (Wayland), Waybar, Wofi, Foot and Mako. This is a practical foundation while the custom Rust Triad Shell is developed. Log in through LightDM and choose the TriadOS session.
+
+## Safety and release status
+
+The live-build profile is not yet a validated release. Build and boot it in QEMU before using it on hardware. Calamares is only included as a package; its installation workflow still needs configuration and testing. Package operations use APT. The Core daemon is a prototype, not a privileged command-execution API. Desktop-entry execution is not a sandbox.
+
+TriadOS does not replace the Linux kernel, Debian package solver, Wayland compositor, or browser engine.
+
 ## Roadmap
-See [docs/ROADMAP.md](docs/ROADMAP.md) for the full distribution plan and milestone status.
 
-## Safety
-Privileged package actions require confirmation and use established package tools. Service management is read-only in this milestone. Desktop-entry execution is not a sandbox. The ISO command is not a validated image build pipeline.
-
-## Architecture direction
-Use the upstream Linux kernel and established components for boot, networking, audio, graphics, package solving, and application sandboxing while building TriadOS services, desktop experience, configuration, orchestration, and applications in Rust. Do not claim the project is a bootable OS until image builds and VM boot tests are passing.
+See [docs/ROADMAP.md](docs/ROADMAP.md) for implementation status.

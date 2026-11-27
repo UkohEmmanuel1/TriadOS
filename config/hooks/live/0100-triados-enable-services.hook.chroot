@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+systemctl enable NetworkManager.service
+systemctl enable lightdm.service
+systemctl enable triados-core.service

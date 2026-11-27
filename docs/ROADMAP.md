@@ -1,40 +1,48 @@
 # TriadOS roadmap
 
-Rust-first Linux distribution built on the upstream Linux kernel.
+Rust-first Linux distribution based on Debian Trixie and the upstream Linux kernel.
 
-## Toolkit and core prototype
-- [x] Rust CLI foundations
-- [x] System status and basic inventory
-- [x] Desktop application discovery/inspection/confirmed launch
+## Foundation
+- [x] Rust CLI and modular system toolkit
+- [x] System status, hardware, network and storage diagnostics
+- [x] Desktop application discovery and confirmed launch
 - [x] Read-only systemd service inspection
-- [x] APT search/update/install/remove wrappers with confirmation
-- [x] TOML config and journal/diagnostics
-- [x] Core daemon prototype over local Unix socket
-- [x] IPC ping/system status/application list commands
-- [x] Network interface and storage/space CLI views
-- [ ] CI green on this foundation (current run failure needs diagnosis)
-- [ ] Socket activation, user/group policy and formal protocol versioning
+- [x] APT wrappers with confirmation
+- [x] TOML configuration and journal diagnostics
+- [x] Triad Core Unix socket prototype
+- [x] Initial Debian Trixie amd64 live-build profile
+- [x] Initial Sway/Waybar/LightDM desktop session configuration
+- [x] Rust binary staging into the live filesystem
+- [ ] Successful clean ISO build
+- [ ] QEMU boot and login validation
+- [ ] Core daemon protocol hardening and service authorization
 
-## Distribution features still to implement
-- [ ] Custom desktop shell, dock/panel, launcher, workspace UI and notifications
+## Desktop and applications
+- [ ] Custom Rust Triad Shell, dock/panel, launcher and workspace UI
 - [ ] Settings application and accessibility
-- [ ] Files GUI, store, task manager, monitor, terminal and native apps
-- [ ] Hardware controls: Wi-Fi, Bluetooth, audio, display, power, storage, peripherals
-- [ ] Security center, app sandbox and permissions model
-- [ ] Update manager, signed packages, backup, snapshots, recovery
-- [ ] AI assistant, local inference/model UI, developer platform
-- [ ] Live ISO, installer, first-boot wizard and QEMU boot validation
-- [ ] Release automation, reproducible builds, signing and hardware test matrix
+- [ ] Files GUI, Store, task manager, monitor and native apps
+- [ ] Notifications and quick settings integration
+- [ ] Audio, display, power and peripheral controls
 
-## Capability inventory
-Core; boot/recovery; desktop shell; app store; package integration; file/storage; hardware; networking; security/privacy; accounts; settings/accessibility; audio; power; notifications; built-in apps; developer tools; AI; updates; backup; virtualization; web/PWA; peripherals; distribution infrastructure; installer; localization; monitoring; services; optional cloud; docs/community.
+## Distribution and installation
+- [x] Initial live-build profile
+- [ ] Installer configuration, disk/partition workflow and encryption
+- [ ] First-boot wizard and account setup
+- [ ] Reproducible signed releases and package repository
+- [ ] Upgrade, rollback, backup and recovery workflows
+- [ ] Secure Boot validation and hardware compatibility matrix
 
-## Build order
-1. Rust system core and service framework
-2. IPC client/protocol and system integrations
-3. Desktop shell and settings
-4. Files, Store, Monitor and apps
-5. Hardware/network/storage/security
-6. Updates, backup and recovery
-7. Installer, ISO and QEMU boot testing
-8. AI/developer ecosystem
+## Security, AI and developer platform
+- [ ] AppArmor profiles and sandboxed application launch
+- [ ] Permission and security center
+- [ ] Signed update and repository verification
+- [ ] AI assistant and optional local inference integration
+- [ ] Developer environment and container/VM management
+
+## Build sequence
+1. Verify Rust CI and fix any compiler/lint failures.
+2. Build the live ISO on Debian Trixie amd64.
+3. Boot and test the ISO in QEMU.
+4. Configure and test Calamares on disposable virtual disks.
+5. Build the custom Rust desktop shell and native applications.
+6. Harden Core IPC and system integration before enabling privileged operations.
